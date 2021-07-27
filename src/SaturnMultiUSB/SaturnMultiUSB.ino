@@ -194,6 +194,7 @@ void setTR_Mode(DB9_TR_Enum mode) {
   }
 }
 
+__attribute__ ((noinline))
 void readSatPort() {
   uint8_t nibble_0;
   uint8_t nibble_1;
