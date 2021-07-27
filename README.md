@@ -4,31 +4,59 @@ Convert Sega Saturn controllers to USB using an Arduino Leonardo.
 
 Works with up to 2 controllers. And up to 7 if using one Multitap (6 Player Adaptor).
 
+## Bonus
+By using a simple adapter it also works with megadrive/genesis controllers and multitaps (Team Player MK-1647).
+
+Controllers can be connected directly to the saturn ports or to a saturn multitap.
+
 ## Compatibility
 
 It was tested with the following official accessories:
-* Digital Pad
-* 3D Analog Pad (digital and analog mode)
-* Arcade Stick
-* Twin Stick
-* Multitap
+* Saturn Digital Pad
+* Saturn 3D Analog Pad (digital and analog mode)
+* Saturn Arcade Stick
+* Saturn Twin Stick
+* Saturn Multitap
+* Megadrive 3-Button
+* Megadrive 6-Button
+* Megadrive 8bidto M30 2.4G
+* Megadrive Multitap (MK-1647).
 
 RetroBit's wireless controller do not work when connected directly but works when using a Multitap.
 
 ## Usage
 
-When powering up it will scan the ports for a Multitap.
-If found, it will create 7 USB joystick. Otherwise 2.
+When powering up it will scan the ports for a Multitap and create the USB joysticks.
+* No Multitap: 2 USB joysticks.
+* A Saturn Multitap: 7 USB joysticks.
+* A Megadrive Multitap: 5 USB joysticks.
 
 So if you want to use a multitap make sure to connect it to the arduino before powering it.
 
 After the power-on setup you can freely hot swap controllers.
 
-Button mapping follows the PS3 standard for compatibility with the console.
+#### Button mapping for USB HID and PS3
+
+| Saturn | HID | PS3     |
+|--------|-----|---------|
+| D-PAD  | HAT | D-PAD   |
+| A      | 1   | X       |
+| B      | 2   | O       |
+| C      | 5   | R1      |
+| X      | 0   | &#9723; |
+| Y      | 3   | &#9651; |
+| Z      | 4   | L1      |
+| L      | 6   | L2      |
+| R      | 7   | R2      |
+| Start  | 9   | Start   |
 
 ## Connection
 
+Attention! Port 1 pins changed on july 26 2021.<br/>
+Review your wiring if you made the adapter before that date and plan to upgrade the arduino's sketch.
+
 Saturn pins:
+
 ![pins on console](docs/pins01.jpg)
 ![pins on controller](docs/pins02.jpg)
 
@@ -37,8 +65,8 @@ Saturn pins:
 | Saturn  | Arduino | Description |
 | ------- |-------- |------------ |
 | 1       | 5V      | VCC/POWER   |
-| 2       | A4      | D1/DATA 1   |
-| 3       | A5      | D0/DATA 0   |
+| 2       | A5      | D1/DATA 1   |
+| 3       | A4      | D0/DATA 0   |
 | 4       | A2      | S0/SEL/TH   |
 | 5       | 7       | S1/REQ/TR   |
 | 6       | A1      | S2/ACK/TL   |
@@ -59,6 +87,21 @@ Saturn pins:
 | 7      | 6       | D3/DATA 3   |
 | 8      | 4       | D2/DATA 2   |
 | 9      | GND     | GROUND      |
+
+
+##### Megadrive to saturn pin mapping
+
+| Saturn  | Mega DB9 | Description |
+| ------- |----------|------------ |
+| 1       | 5        | VCC/POWER   |
+| 2       | 2        | D1/DATA 1   |
+| 3       | 1        | D0/DATA 0   |
+| 4       | 7        | S0/SEL/TH   |
+| 5       | 9        | S1/REQ/TR   |
+| 6       | 6        | S2/ACK/TL   |
+| 7       | 4        | D3/DATA 3   |
+| 8       | 3        | D2/DATA 2   |
+| 9       | 8        | GROUND      |
 
 ## Credits
 
