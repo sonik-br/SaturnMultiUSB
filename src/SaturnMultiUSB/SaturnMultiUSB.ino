@@ -7,48 +7,55 @@
  * 
  * Also works with MegaDrive controllers and mulltitaps.
  * 
- * It uses the ArduinoJoystickLibrary and the DigitalWriteFast Library.
- * 
  * For details on Joystick Library, see
  * https://github.com/MHeironimus/ArduinoJoystickLibrary
  * 
- * For details on Digital Write Fast Library, see
- * https://github.com/NicksonYap/digitalWriteFast
 */
-
 
 //Arduino Joystick Library
 #include <Joystick.h>
-
-//Arduino Digital Write Fast Library
-#include <digitalWriteFast.h>
 
 //#define ENABLE_SERIAL_DEBUG
 
 #define SATURN_PORTS 2 //1 or 2 controller ports
 
 //Saturn port 1
-#define SAT1_TH A2
-#define SAT1_TR 7
+#define SAT1_TH A2 //PF5
+#define SAT1_TR 7  //PE6
+#define SAT1_TL A1 //PF6
 #define SAT1_D0 A4
 #define SAT1_D1 A5
 #define SAT1_D2 A3
 #define SAT1_D3 A0
-#define SAT1_TL A1
+
 #define SAT1_PINGROUP PINF
+#define SAT1_TH_PORT PORTF
+#define SAT1_TH_BIT 5
+#define SAT1_TR_PORT PORTE
+#define SAT1_TR_PIN PINE
+#define SAT1_TR_BIT 6
+#define SAT1_TL_PIN PINF
+#define SAT1_TL_BIT 6
 
 //Saturn port 2
-#define SAT2_TH 8
-#define SAT2_TR 9
+#define SAT2_TH 8 //PB4
+#define SAT2_TR 9 //PB5
+#define SAT2_TL 5 //PC6
 #define SAT2_D0 2
 #define SAT2_D1 3
 #define SAT2_D2 4
 #define SAT2_D3 6
-#define SAT2_TL 5
+
 #define SAT2_PINGROUP PIND
+#define SAT2_TH_PORT PORTB
+#define SAT2_TH_BIT 4
+#define SAT2_TR_PORT PORTB
+#define SAT2_TR_PIN PINB
+#define SAT2_TR_BIT 5
+#define SAT2_TL_PIN PINC
+#define SAT2_TL_BIT 6
 
 #define ENABLE_8BITDO_HOME_BTN//coment to disable the use of HOME button on 8bidto M30 2.4G.
-
 
 #define MAX_USB_STICKS 5 + SATURN_PORTS //maximum 7 controllers per arduino
 
@@ -61,8 +68,6 @@
 #define debug(...)
 #define debugln(...)
 #endif
-
-unsigned int sleepTime = 4000; //In micro seconds
 
 Joystick_* usbStick[MAX_USB_STICKS];
 uint8_t lastState[MAX_USB_STICKS][8]= {}; //Store the state of each controller
@@ -77,103 +82,69 @@ enum DB9_TR_Enum {
 DB9_TR_Enum portState[2] = { DB9_TR_INPUT, DB9_TR_INPUT };
 
 
-short totalUsb = SATURN_PORTS;
-short joyCount = 0;
-short currentPort = 1;
-int16_t hatTable[16];
+uint8_t totalUsb = SATURN_PORTS;
+uint8_t joyCount = 0;
+uint8_t currentPort = 1;
 
-unsigned long start;
-unsigned long end;
-unsigned long delta;
+//dpad to hat table angles. RLDU
+const int16_t hatTable[] = {
+  0,0,0,0,0, //not used
+  135, //0101
+  45,  //0110
+  90,  //0111
+  0, //not used
+  225, //1010
+  315, //1010
+  270, //1011
+  0, //not used
+  180, //1101
+  0,   //1110
+  JOYSTICK_HATSWITCH_RELEASE, //1111
+};
 
-void setTR_High() {
-  if (currentPort == 1) {
-    digitalWriteFast(SAT1_TR, HIGH);
-  } else {
-    digitalWriteFast(SAT2_TR, HIGH);
-  }
+
+void setTR(uint8_t value) {
+  if (currentPort == 1)
+    bitWrite(SAT1_TR_PORT, SAT1_TR_BIT, value);
+  else
+    bitWrite(SAT2_TR_PORT, SAT2_TR_BIT, value);
 }
 
-void setTR_Low() {
-  if (currentPort == 1) {
-    digitalWriteFast(SAT1_TR, LOW);
-  } else {
-    digitalWriteFast(SAT2_TR, LOW);
-  }
+void setTH(uint8_t value) {
+  if (currentPort == 1)
+    bitWrite(SAT1_TH_PORT, SAT1_TH_BIT, value);
+  else
+    bitWrite(SAT2_TH_PORT, SAT2_TH_BIT, value);
 }
-
-void setTH_High() {
-  if (currentPort == 1) {
-    digitalWriteFast(SAT1_TH, HIGH);
-  } else {
-    digitalWriteFast(SAT2_TH, HIGH);
-  }
-}
-
-void setTH_Low() {
-  if (currentPort == 1) {
-    digitalWriteFast(SAT1_TH, LOW);
-  } else {
-    digitalWriteFast(SAT2_TH, LOW);
-  }
-}
-
 
 bool readTL() {
-  if (currentPort == 1) {
-    return digitalReadFast(SAT1_TL);
-  } else {
-    return digitalReadFast(SAT2_TL);
-  }
+  if (currentPort == 1)
+    return bitRead(SAT1_TL_PIN, SAT1_TL_BIT);
+  else
+    return bitRead(SAT2_TL_PIN, SAT2_TL_BIT);
 }
 
-char waitTL(char state) {
-  char t_out = 100;
-  if (state) {
-    while (!readTL()) {
-      delayMicroseconds(4);
-      t_out--;
-      if (!t_out)
-        return -1;
-    }
-  } else {
-    while (readTL()) {
-      delayMicroseconds(4);
-      t_out--;
-      if (!t_out)
-        return -1;
-    }
+bool readTR() {
+  if (currentPort == 1)
+    return bitRead(SAT1_TR_PIN, SAT1_TR_BIT);
+  else
+    return bitRead(SAT2_TR_PIN, SAT2_TR_BIT);
+}
+
+uint8_t waitTL(uint8_t state) { //returns 1 if reach timeout
+  int8_t t_out = 100;
+  uint8_t compare = !state;
+  while (readTL() == compare) {
+    delayMicroseconds(4);
+    if (!t_out--)
+      return 1;
   }
   return 0;
 }
 
-char readMegadriveBits() { //6 bits
-  bool TL;
-  bool TR;
-  uint8_t nibble = readNibble();
-
-  if(portState[currentPort-1] != DB9_TR_OUTPUT) {//saturn dont need these values
-    if (currentPort == 1) {
-      TL = digitalReadFast(SAT1_TL);
-      TR = digitalReadFast(SAT1_TR);
-    } else {
-      TL = digitalReadFast(SAT2_TL);
-      TR = digitalReadFast(SAT2_TR);
-    }
-  
-    bitWrite(nibble, 4, TL);
-    bitWrite(nibble, 5, TR);
-  }        
-  return nibble;
-}
-
-char readNibble() {
-  //Read from port 1 or port 2
-  uint8_t nibble = currentPort == 1 ? SAT1_PINGROUP : SAT2_PINGROUP;
-  return ((nibble >> 4) & B00001000) + // D3
-         ((nibble >> 2) & B00000100) + // D2
-         ((nibble << 1) & B00000010) + // D1
-         ((nibble >> 1) & B00000001);  // D0
+uint8_t setTRAndWaitTL(uint8_t trValue) {
+  setTR(trValue);
+  return waitTL(trValue);
 }
 
 void setTR_Mode(DB9_TR_Enum mode) {
@@ -184,7 +155,7 @@ void setTR_Mode(DB9_TR_Enum mode) {
         pinMode(SAT1_TR, OUTPUT);
       else
         pinMode(SAT2_TR, OUTPUT);
-      setTR_High();
+      setTR(HIGH);
     } else {
       if (currentPort == 1)
         pinMode(SAT1_TR, INPUT_PULLUP);
@@ -194,16 +165,33 @@ void setTR_Mode(DB9_TR_Enum mode) {
   }
 }
 
-__attribute__ ((noinline))
+uint8_t readMegadriveBits() { //6 bits
+  uint8_t nibble = readNibble();
+  if(portState[currentPort-1] != DB9_TR_OUTPUT) {//saturn dont need these values
+    bitWrite(nibble, 4, readTL());
+    bitWrite(nibble, 5, readTR());
+  }        
+  return nibble;
+}
+
+uint8_t readNibble() {
+  //Read from port 1 or port 2
+  uint8_t nibble = currentPort == 1 ? SAT1_PINGROUP : SAT2_PINGROUP;
+  return ((nibble >> 4) & B00001000) + // D3
+         ((nibble >> 2) & B00000100) + // D2
+         ((nibble << 1) & B00000010) + // D1
+         ((nibble >> 1) & B00000001);  // D0
+}
+
 void readSatPort() {
   uint8_t nibble_0;
   uint8_t nibble_1;
 
-  setTH_High();
+  setTH(HIGH);
   delayMicroseconds(4);
   nibble_0 = readMegadriveBits();
 
-  setTH_Low();
+  setTH(LOW);
   delayMicroseconds(4);
   nibble_1 = readMegadriveBits();
 
@@ -227,66 +215,46 @@ void readSatPort() {
     setTR_Mode(DB9_TR_INPUT);
   }
 
-  setTH_High();
+  setTH(HIGH);
 
   if (portState[currentPort-1] == DB9_TR_OUTPUT)
-    setTR_High();
+    setTR(HIGH);
   
-  delayMicroseconds(100);
+  delayMicroseconds(50);
 }
 
 void readMegaMultiTap() {
-  byte joyIndex;
+  uint8_t joyIndex;
   uint8_t nibble_0;
-  uint8_t nibble_1;
-  uint16_t temp;
+  uint16_t tapPortState = B0;
   uint8_t nibbles;
-  char tr = 0;
-  char r;
-  int i;
+  uint8_t tr = 0;
+  uint8_t tl_timeout;
+  uint8_t i;
 
   //read first two nibbles. should be zero and zero
-  for (int i = 0; i < 2; i++) {
-    if (tr) {
-      setTR_High();
-      r = waitTL(1);
-      if (r)
-        return;
-    } else {
-      setTR_Low();
-      r = waitTL(0);
-      if (r)
-        return;
-    }
-
+  for (i = 0; i < 2; i++) {
+    tl_timeout = setTRAndWaitTL(i);
+    if (tl_timeout)
+      return;
     delayMicroseconds(4);
-
-    tr ^= 1;
   }
 
   //read each port controller ID and stores the 4 values in the 16 bits variable
   for (i = 0; i < 16; i+=4) {
-    if (tr) {
-      setTR_High();
-      r = waitTL(1);
-      if (r)
-        return;
-    } else {
-      setTR_Low();
-      r = waitTL(0);
-      if (r)
-        return;
-    }
-
+    tl_timeout = setTRAndWaitTL(tr);
+    if (tl_timeout)
+      return;
     delayMicroseconds(4);
-    temp |= (readNibble() << i);
+    
+    tapPortState |= (readNibble() << i);
 
     tr ^= 1;
   }
 
   //now read each port
   for (i = 0; i < 16; i+=4) {
-    nibble_0 = (temp >> i) & B1111;
+    nibble_0 = (tapPortState >> i) & B1111;
 
     if (nibble_0 == B0000) //3 button. 2 nibbles
       nibbles = 2;
@@ -300,18 +268,10 @@ void readMegaMultiTap() {
     if (nibbles != 6)//ignore mouse
       joyIndex = joyCount++;
     
-    for(int x = 0; x < nibbles; x++) {
-      if (tr) {
-        setTR_High();
-        r = waitTL(1);
-        if (r)
-          return;
-      } else {
-        setTR_Low();
-        r = waitTL(0);
-        if (r)
-          return;
-      }
+    for(uint8_t x = 0; x < nibbles; x++) {
+      tl_timeout = setTRAndWaitTL(tr);
+      if (tl_timeout)
+        return;
       
       if (nibbles != 6)//ignore mouse
         setUsbValues(joyIndex, false, x, readNibble());
@@ -326,35 +286,19 @@ void readMegaMultiTap() {
 void readThreeWire() {
   uint8_t nibble_0;
   uint8_t nibble_1;
-  char tr = 0;
-  char r;
+  uint8_t tl_timeout;
 
-  //setTR_High()
-  //delayMicroseconds(4);
-
-  for (int i = 0; i < 2; i++) {
-    if (tr) {
-      setTR_High();
-      r = waitTL(1);
-      if (r)
-        return;
-    } else {
-      setTR_Low();
-      r = waitTL(0);
-      if (r)
-        return;
-    }
+  for (uint8_t i = 0; i < 2; i++) {
+    tl_timeout = setTRAndWaitTL(i);
+    if (tl_timeout)
+      return;
 
     delayMicroseconds(4);
-
-    //nibbleTMP = readNibble();
 
     if (i == 0)
       nibble_0 = readNibble();
     else
       nibble_1 = readNibble();
-
-    tr ^= 1;
   }
 
   if (nibble_0 == B00000100 && nibble_1 == B00000001) {
@@ -378,85 +322,48 @@ void readThreeWire() {
 }
 
 void readMultitap() {
-  int port;
-  int i;
-  int nibbles = 2;
-  uint8_t nibbleTMP;
-  uint8_t nibble_0;
-  uint8_t nibble_1;
-  char tr = 0;
-  char r;
-
-  //setTR_High()
-  //delayMicroseconds(10);
-
+  uint8_t i;
+  uint8_t tl_timeout;
 
   //Multitap header is fixed: 6 (ports) and zero (len)
-  for (i = 0; i < nibbles; i++) {
-    if (tr) {
-      setTR_High();
-      r = waitTL(1);
-      if (r)
-        return;
-    }
-    else {
-      setTR_Low();
-      r = waitTL(0);
-      if (r)
-        return;
-    }
-    delayMicroseconds(2);
-    tr ^= 1;
+  for (i = 0; i < 2; i++) { //set TR low and high
+    tl_timeout = setTRAndWaitTL(i);
+    if (tl_timeout)
+      return;
+    delayMicroseconds(4);
   }
   //delayMicroseconds(5);
-
 
   for (i = 0; i < 6; i++) {// Read the 6 multitap ports
     readThreeWire();
     delayMicroseconds(4);
   }
 
-  setTR_Low();
-  r = waitTL(0);
-  if (r)
-    return;
-
-  //nibbleTMP = readNibble();
-
-  setTR_High();
-  r = waitTL(1);
-  if (r)
-    return;
-
-  //nibbleTMP = readNibble();
-  //delayMicroseconds(5);
+  for (i = 0; i < 2; i++) { //set TR low and high
+    tl_timeout = setTRAndWaitTL(i);
+    if (tl_timeout)
+      return;
+    delayMicroseconds(4);
+  }
+  
 }
 
-void readUnhandledPeripheral(int len) {
-  int nibbles = len * 2;
-  char tr = 0;
-  char r;
+void readUnhandledPeripheral(uint8_t len) {
+  uint8_t nibbles = len * 2;
+  uint8_t tr = 0;
+  uint8_t tl_timeout;
 
-  for (int i = 0; i < nibbles; i++) {
-    if (tr) {
-      setTR_High();
-      r = waitTL(1);
-      if (r)
-        return;
-    } else {
-      setTR_Low();
-      r = waitTL(0);
-      if (r)
-        return;
-    }
-    delayMicroseconds(2);
+  for (uint8_t i = 0; i < nibbles; i++) {
+    tl_timeout = setTRAndWaitTL(tr);
+    if (tl_timeout)
+      return;
+    delayMicroseconds(4);
 
-    //readNibble();
     tr ^= 1;
   }
 }
 
-void setUsbValues(int joyIndex, bool isAnalog, int page, uint8_t nibbleTMP) {
+void setUsbValues(uint8_t joyIndex, bool isAnalog, uint8_t page, uint8_t nibbleTMP) {
   //Only report L and R for digital pads. analog will use brake and throttle.
 
   if (joyIndex >= totalUsb)
@@ -499,27 +406,20 @@ void setUsbValues(int joyIndex, bool isAnalog, int page, uint8_t nibbleTMP) {
 }
 
 void readThreeWireController(bool isAnalog) {
-  byte joyIndex = joyCount++;
-  int i;
-  int nibbles = (isAnalog ? 12 : 4);
+  uint8_t joyIndex = joyCount++;
+  uint8_t i;
+  uint8_t nibbles = (isAnalog ? 12 : 4);
   uint8_t nibbleTMP;
-  uint8_t nibble_0;
+  uint8_t nibble_0 = B0;
   uint8_t nibble_1;
-  char tr = 0;
-  char r;
+  uint8_t tr = 0;
+  uint8_t tl_timeout;
 
   for (i = 0; i < nibbles; i++) {
-    if (tr) {
-      setTR_High();
-      r = waitTL(1);
-      if (r)
-        return;
-    } else {
-      setTR_Low();
-      r = waitTL(0);
-      if (r)
-        return;
-    }
+    tl_timeout = setTRAndWaitTL(tr);
+    if (tl_timeout)
+      return;
+      
     delayMicroseconds(2);
 
     nibbleTMP = readNibble();
@@ -555,7 +455,7 @@ void readThreeWireController(bool isAnalog) {
 }
 
 void readMegadrivePad(uint8_t nibble_0, uint8_t nibble_1) {
-  byte joyIndex = joyCount++;
+  uint8_t joyIndex = joyCount++;
 
   // RLDU
   setUsbValues(joyIndex, false, 0, nibble_0 & B00001111);
@@ -564,24 +464,21 @@ void readMegadrivePad(uint8_t nibble_0, uint8_t nibble_1) {
   setUsbValues(joyIndex, false, 1, (nibble_0 >> 4) | (nibble_1 >> 2));
 
   //check if is 6-button pad;
-  setTH_High();
-  delayMicroseconds(4);
-  setTH_Low();
-  delayMicroseconds(4);
-
-  setTH_High();
-  delayMicroseconds(4);
-  setTH_Low();
-  delayMicroseconds(4);
-  
+  uint8_t th = 1;
+  for (uint8_t i = 0; i < 4; i++) { //set TH high-low-high-low
+    setTH(th);
+    delayMicroseconds(4);
+    th ^= 1;
+  }
+ 
   nibble_0 = readMegadriveBits();
   
   if ((nibble_0 & B00001111) == B0) { //it is a 6-button pad
-    setTH_High();
+    setTH(HIGH);
     delayMicroseconds(4);
     nibble_0 = readMegadriveBits();
 
-    setTH_Low();
+    setTH(LOW);
     delayMicroseconds(4);
     nibble_1 = readMegadriveBits();
 
@@ -600,7 +497,7 @@ void readMegadrivePad(uint8_t nibble_0, uint8_t nibble_1) {
 }
 
 void readDigitalPad(uint8_t nibble_0, uint8_t nibble_1) {
-  byte joyIndex = joyCount++;
+  uint8_t joyIndex = joyCount++;
   uint8_t nibbleTMP;
   //uint8_t currentHatState;
 
@@ -609,24 +506,24 @@ void readDigitalPad(uint8_t nibble_0, uint8_t nibble_1) {
   setUsbValues(joyIndex, false, 3, nibble_0);
 
   // RLDU
-  //setTH_Low();
-  //setTR_High();
+  //setTH(LOW);
+  //setTR(HIGH);
   //delayMicroseconds(4);
   //nibbleTMP = readNibble();
   //debugln (nibble_1, BIN);
   setUsbValues(joyIndex, false, 0, nibble_1);
 
   // SACB
-  setTH_High();
-  setTR_Low();
+  setTH(HIGH);
+  setTR(LOW);
   delayMicroseconds(4);
   nibbleTMP = readNibble();
   //debugln (nibbleTMP, BIN);
   setUsbValues(joyIndex, false, 1, nibbleTMP);
 
   // RYXZ
-  setTH_Low();
-  setTR_Low();
+  setTH(LOW);
+  setTR(LOW);
   delayMicroseconds(4);
   nibbleTMP = readNibble();
   //debugln (nibbleTMP, BIN);
@@ -634,7 +531,7 @@ void readDigitalPad(uint8_t nibble_0, uint8_t nibble_1) {
 }
 
 void reportUsb() {
-  for (int i = 0; i < joyCount; i++) {
+  for (uint8_t i = 0; i < joyCount; i++) {
     if (i >= totalUsb)
       break;
     if (bitRead(joyStateChanged, i))
@@ -648,23 +545,23 @@ void detectMultitap() {
   uint8_t nibble_0;
   uint8_t nibble_1;
   uint8_t nibbleTMP;
-  int nibbles = 2;
-  int i;
-  char tr = 0;
-  char r;
+  uint8_t nibbles = 2;
+  uint8_t i;
+  uint8_t tr = 0;
+  uint8_t tl_timeout;
 
-  //setTH_High();
-  //setTR_High();
+  //setTH(HIGH);
+  //setTR(HIGH);
   //delayMicroseconds(4);
 
-  r = waitTL(1); //Device is not ready yet. Saturn and Mega multitap hold TL high while initializing.
-  if (r)
+  tl_timeout = waitTL(1); //Device is not ready yet. Saturn and Mega multitap hold TL high while initializing.
+  if (tl_timeout)
     return;
 
   //readMegadriveBits
   nibble_0 = readNibble();
 
-  setTH_Low();
+  setTH(LOW);
   delayMicroseconds(4);
   nibble_1 = readNibble();
 
@@ -674,17 +571,9 @@ void detectMultitap() {
   } else if (nibble_0 == B00000001 && nibble_1 == B00000001) { //SATURN 3-WIRE-HANDSHAKE
     setTR_Mode(DB9_TR_OUTPUT);
     for (i = 0; i < nibbles; i++) {
-      if (tr) {
-        setTR_High();
-        r = waitTL(1);
-        if (r)
-          return;
-      } else {
-        setTR_Low();
-        r = waitTL(0);
-        if (r)
-          return;
-      }
+      tl_timeout = setTRAndWaitTL(i);
+      if (tl_timeout)
+        return;
       delayMicroseconds(4);
 
       nibbleTMP = readNibble();
@@ -702,20 +591,24 @@ void detectMultitap() {
   }
 
   //reset TH and TR to high
-  setTH_High();
+  setTH(HIGH);
   
   if (portState[currentPort-1] == DB9_TR_OUTPUT)
-    setTR_High();
+    setTR(HIGH);
 
   delayMicroseconds(4);
 }
 
-void setup() {
-  int i;
+void blinkLed() {
+  bitWrite(PORTC, 7, HIGH);
+  delay(500);
+  bitWrite(PORTC, 7, LOW);
+  delay(500);
+}
 
+void setup() {
   //init onboard led pin
   pinMode(LED_BUILTIN, OUTPUT);
-
 
   //Port 1 pins
 
@@ -748,20 +641,9 @@ void setup() {
   pinMode(SAT2_TR, INPUT_PULLUP);
 #endif
 
-
-  //hat table angles. ----RLDU
-  hatTable[B00001111] = JOYSTICK_HATSWITCH_RELEASE;
-  hatTable[B00001110] = 0;
-  hatTable[B00000110] = 45;
-  hatTable[B00000111] = 90;
-  hatTable[B00000101] = 135;
-  hatTable[B00001101] = 180;
-  hatTable[B00001001] = 225;
-  hatTable[B00001011] = 270;
-  hatTable[B00001010] = 315;
-
+  uint8_t i;
   for(i = 0; i < MAX_USB_STICKS; i++)
-    for(int x = 0; x < 8; x++)
+    for(uint8_t x = 0; x < 8; x++)
       lastState[i][x] = 1;
 
   delayMicroseconds(10);
@@ -819,11 +701,11 @@ void setup() {
 }
 
 void loop() {
-  start = micros();
+  unsigned long start = micros();
   joyCount = 0;
 
   //read saturn ports
-  for (int i = 1; i <= SATURN_PORTS; i++) {
+  for (uint8_t i = 1; i <= SATURN_PORTS; i++) {
     currentPort = i;
     readSatPort();
   }
@@ -834,20 +716,23 @@ void loop() {
   //clear state changed
   joyStateChanged = B00000000;
 
+  uint16_t sleepTime; //In micro seconds
+  if (totalUsb > 2) //multitap mode
+    sleepTime = 4000;
+  else if (joyCount == 1) //one controller mode
+    sleepTime = 1000;
+  else //two controllers mode
+    sleepTime = 2000;
+
   //sleep if total loop time was less than sleepTime
-  end = micros();
-  delta = end - start;
+  unsigned long delta = micros() - start;
   if (delta < sleepTime) {
+    //debugln(delta);
     delta = sleepTime - delta;
     delayMicroseconds(delta);
     //debugln(delta);
   }
 
-  if (joyCount == 0) { //blink led while no controller connected
-    digitalWriteFast(LED_BUILTIN, HIGH);
-    delay(500);
-    digitalWriteFast(LED_BUILTIN, LOW);
-    delay(500);
-  }
-
+  if (joyCount == 0) //blink led while no controller connected
+    blinkLed();
 }
