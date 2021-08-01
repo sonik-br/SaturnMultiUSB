@@ -4,6 +4,11 @@ Convert Sega Saturn controllers to USB using an Arduino Leonardo.
 
 Works with up to 2 controllers. And up to 7 if using one Multitap (6 Player Adaptor).
 
+Code have some hardcoded delay between controller reads depending on what's connected:
+* 1 controller: 1ms.
+* 2 controllers: 2ms.
+* Multitap: 4ms.
+
 ## Bonus
 By using a simple adapter it also works with megadrive/genesis controllers and multitaps (Team Player MK-1647).
 
@@ -107,7 +112,7 @@ Saturn pins:
 
 My father for helping with the electronics stuff.
 
-It uses the [ArduinoJoystickLibrary](https://github.com/MHeironimus/ArduinoJoystickLibrary) and the [DigitalWriteFast Library](https://github.com/NicksonYap/digitalWriteFast).
+It uses the [ArduinoJoystickLibrary](https://github.com/MHeironimus/ArduinoJoystickLibrary)
 
 Inspired by raphnet's [saturn_usb](https://github.com/raphnet/saturn_usb).
 
@@ -115,3 +120,5 @@ Darthcloud's [Evolution of SEGA's IO Interface](https://hackaday.io/project/1703
 
 #### Warning
 Code and wiring directions are provided to you 'as is' and without any warranties. Use at your own risk.
+
+The pinout is specific for the Arduino Leonardo. Code uses [Direct Port Manipulation](https://www.arduino.cc/en/Reference/PortManipulation).
