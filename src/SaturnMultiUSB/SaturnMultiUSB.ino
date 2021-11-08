@@ -304,20 +304,8 @@ void readThreeWire() {
   if (nibble_0 == B00000100 && nibble_1 == B00000001) {
     //debugln (F("6P MULTI-TAP"));
     readMultitap();
-  } else if (nibble_0 == B00000000 && nibble_1 == B00000010) {
-    //debugln (F("DIGITAL"));
-    readThreeWireController(false);
-  } else if (nibble_0 == B00000001 && nibble_1 == B00000110) {
-    //debugln (F("ANALOG"));
-    readThreeWireController(true);
-  } else if (nibble_0 == B00001110 && nibble_1 < B00000011) { //megadrive 3 or 6 button pad. ignore mouse
-    //debugln (F("MEGADRIVE"));
-    readThreeWireController(false);
-  } else if (nibble_0 == B00001111 && nibble_1 == B00001111) {
-    //debugln (F("NONE"));
   } else {
-    //debugln (F("UNKNOWN"));
-    readUnhandledPeripheral(nibble_1);
+    readThreeWireController(nibble_0, nibble_1);
   }
 }
 
@@ -405,15 +393,43 @@ void setUsbValues(uint8_t joyIndex, bool isAnalog, uint8_t page, uint8_t nibbleT
   bitWrite(joyStateChanged, joyIndex, 1);
 }
 
-void readThreeWireController(bool isAnalog) {
+void readThreeWireController(uint8_t controllerType, uint8_t dataSize) {
   uint8_t joyIndex = joyCount++;
   uint8_t i;
-  uint8_t nibbles = (isAnalog ? 12 : 4);
+  uint8_t nibbles = dataSize * 2;
   uint8_t nibbleTMP;
   uint8_t nibble_0 = B0;
   uint8_t nibble_1;
   uint8_t tr = 0;
   uint8_t tl_timeout;
+  bool isAnalog = controllerType == B00000001;
+
+
+  if (controllerType == B00000000 && dataSize == B00000010) {
+    //debugln (F("DIGITAL"));
+  } else if (controllerType == B00000001 && dataSize == B00000110) {
+    //debugln (F("ANALOG"));
+  } else if (controllerType == B00000001 && dataSize == B00000011) {
+    //debugln (F("WHEEL"));
+
+/*
+  } else if (controllerType == B00000001 && dataSize == B00000101) {
+    //debugln (F("MISSION STICK THREE-AXIS MODE"));
+  } else if (controllerType == B00000001 && dataSize == B00001001) {
+    //debugln (F("MISSION STICK SIX-AXIS MODE"));
+*/
+
+  } else if (controllerType == B00001110 && dataSize < B00000011) { //megadrive 3 or 6 button pad. ignore mouse
+    //debugln (F("MEGADRIVE"));
+  } else if (controllerType == B00001111 && dataSize == B00001111) {
+    //debugln (F("NONE"));
+  } else {
+    //debugln (F("UNKNOWN"));
+    readUnhandledPeripheral(dataSize);
+    return;
+  }
+
+
 
   for (i = 0; i < nibbles; i++) {
     tl_timeout = setTRAndWaitTL(tr);
@@ -502,7 +518,7 @@ void readDigitalPad(uint8_t nibble_0, uint8_t nibble_1) {
   //uint8_t currentHatState;
 
   // L100
-  //debugln (firstNibble, BIN);
+  //debugln (nibble_0, BIN);
   setUsbValues(joyIndex, false, 3, nibble_0);
 
   // RLDU
@@ -687,8 +703,8 @@ void setup() {
     usbStick[i]->setThrottleRange(0, 255);
     usbStick[i]->setBrakeRange(0, 255);
 
-    usbStick[i]->setXAxis(128);
-    usbStick[i]->setYAxis(128);
+    usbStick[i]->setXAxis(127);
+    usbStick[i]->setYAxis(127);
     usbStick[i]->setThrottle(0);
     usbStick[i]->setBrake(0);
     usbStick[i]->sendState();
