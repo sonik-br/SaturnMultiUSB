@@ -423,6 +423,7 @@ void readThreeWireController(uint8_t controllerType, uint8_t dataSize) {
     //debugln (F("MEGADRIVE"));
   } else if (controllerType == B00001111 && dataSize == B00001111) {
     //debugln (F("NONE"));
+    return;
   } else {
     //debugln (F("UNKNOWN"));
     readUnhandledPeripheral(dataSize);
@@ -703,8 +704,8 @@ void setup() {
     usbStick[i]->setThrottleRange(0, 255);
     usbStick[i]->setBrakeRange(0, 255);
 
-    usbStick[i]->setXAxis(127);
-    usbStick[i]->setYAxis(127);
+    usbStick[i]->setXAxis(128);
+    usbStick[i]->setYAxis(128);
     usbStick[i]->setThrottle(0);
     usbStick[i]->setBrake(0);
     usbStick[i]->sendState();
