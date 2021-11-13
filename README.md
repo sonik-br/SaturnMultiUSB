@@ -21,6 +21,7 @@ It was tested with the following official accessories:
 * Saturn 3D Analog Pad (digital and analog mode)
 * Saturn Arcade Stick
 * Saturn Twin Stick
+* Saturn Arcade Racer
 * Saturn Multitap
 * Megadrive 3-Button
 * Megadrive 6-Button
@@ -28,6 +29,8 @@ It was tested with the following official accessories:
 * Megadrive Multitap (MK-1647).
 
 RetroBit's wireless controller do not work when connected directly but works when using a Multitap.
+
+Not compatible with EA's multitap.
 
 ## Usage
 
