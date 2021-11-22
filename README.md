@@ -1,5 +1,9 @@
 # SaturnMultiUSB
 
+**Update: I've [converted this to an class](https://github.com/sonik-br/SaturnLib). It's easier to customize and to use on other Arduino models. I recommend to use it**
+
+---
+
 Convert Sega Saturn controllers to USB using an Arduino Leonardo.
 
 Works with up to 2 controllers. And up to 7 if using one Multitap (6 Player Adaptor).
